@@ -86,6 +86,12 @@ namespace Microsoft.WingetCreateCLI.Commands
         public DateTimeOffset? ReleaseDate { get; set; }
 
         /// <summary>
+        /// Gets or sets the path to the manifest file to be used as the base manifest for the update.
+        /// </summary>
+        [Option('c', "custom-manifest", Required = false, HelpText = "Path to the manifest file to be used as the base manifest for the update")]
+        public string InputPath { get; set; }
+
+        /// <summary>
         /// Gets or sets the outputPath where the generated manifest file should be saved to.
         /// </summary>
         [Option('o', "out", Required = false, HelpText = "OutputDirectory_HelpText", ResourceType = typeof(Resources))]
@@ -227,7 +233,30 @@ namespace Microsoft.WingetCreateCLI.Commands
 
                 try
                 {
-                    latestManifestContent = await this.GitHubClient.GetManifestContentAsync(this.Id);
+                   latestManifestContent = await this.GitHubClient.GetManifestContentAsync(this.Id);
+                   List<string> manifestContent = new List<string>();
+
+                    // Get the latest manifest content from the input path.
+                   if (File.Exists(this.InputPath))
+                   {
+                        manifestContent = File.ReadAllLines(this.InputPath).ToList();
+                   }
+                    else if (Directory.Exists(this.InputPath))
+                    {
+                        string[] manifestFiles = Directory.GetFiles(this.InputPath, "*.yaml");
+                        if (manifestFiles.Length == 0)
+                        {
+                            return false;
+                        }
+
+                        foreach (string manifestFile in manifestFiles)
+                        {
+                            string fileContent = File.ReadAllText(manifestFile);
+                            manifestContent.Add(fileContent);
+                        }
+                    }
+
+                   latestManifestContent = manifestContent;
                 }
                 catch (Octokit.NotFoundException e)
                 {
